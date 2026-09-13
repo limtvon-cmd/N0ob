@@ -444,26 +444,3 @@ async start() {
     // ... rest of existing code ...
   }
 }
-
-// Add this event listener for prefix commands
-client.on('messageCreate', async message => {
-  if (message.author.bot) return;
-  
-  const prefix = botConfig.commands.prefix || '$';
-  
-  if (!message.content.startsWith(prefix)) return;
-
-  const args = message.content.slice(prefix.length).trim().split(/ +/);
-  const commandName = args.shift().toLowerCase();
-
-  const command = client.prefixCommands.get(commandName);
-
-  if (!command) return;
-
-  try {
-    await command.execute(message, args, client);
-  } catch (error) {
-    logger.error(`Error executing command ${commandName}:`, error);
-    message.reply({ content: '❌ Error executing command', ephemeral: true }).catch(() => {});
-  }
-});
