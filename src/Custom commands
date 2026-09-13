@@ -1,0 +1,246 @@
+const {
+  Client,
+  GatewayIntentBits,
+  PermissionsBitField
+} = require("discord.js");
+
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent
+  ]
+});
+
+const PREFIX = "$";
+
+client.once("ready", () => {
+  console.log(`🤖 ${client.user.tag} is online!`);
+});
+
+client.on("messageCreate", async (message) => {
+  if (message.author.bot || !message.guild) return;
+  if (!message.content.startsWith(PREFIX)) return;
+
+  const args = message.content.slice(PREFIX.length).trim().split(/\s+/);
+  const command = args.shift().toLowerCase();
+
+  // =========================
+  // 🛡️ MODERATION COMMANDS
+  // =========================
+
+  if (command === "kick") {
+    if (!message.member.permissions.has(PermissionsBitField.Flags.KickMembers))
+      return message.reply("❌ You don't have permission to kick members.");
+
+    const member = message.mentions.members.first();
+    if (!member) return message.reply("Usage: `$kick @user [reason]`");
+
+    const reason = args.slice(1).join(" ") || "No reason provided";
+
+    try {
+      await member.kick(reason);
+      return message.reply(
+        `👢 **${member.user.tag}** was kicked.\n**Reason:** ${reason}`
+      );
+    } catch {
+      return message.reply("❌ I cannot kick that member.");
+    }
+  }
+
+  if (command === "ban") {
+    if (!message.member.permissions.has(PermissionsBitField.Flags.BanMembers))
+      return message.reply("❌ You don't have permission to ban members.");
+
+    const member = message.mentions.members.first();
+    if (!member) return message.reply("Usage: `$ban @user [reason]`");
+
+    const reason = args.slice(1).join(" ") || "No reason provided";
+
+    try {
+      await member.ban({ reason });
+      return message.reply(
+        `🔨 **${member.user.tag}** was banned.\n**Reason:** ${reason}`
+      );
+    } catch {
+      return message.reply("❌ I cannot ban that member.");
+    }
+  }
+
+  if (command === "mute") {
+    if (!message.member.permissions.has(PermissionsBitField.Flags.ModerateMembers))
+      return message.reply("❌ You don't have permission to mute members.");
+
+    const member = message.mentions.members.first();
+    if (!member) return message.reply("Usage: `$mute @user`");
+
+    try {
+      await member.timeout(10 * 60 * 1000, "Muted by moderator");
+      return message.reply(
+        `🔇 **${member.user.tag}** has been muted for **10 minutes**.`
+      );
+    } catch {
+      return message.reply("❌ I cannot mute that member.");
+    }
+  }
+
+  if (command === "unmute") {
+    if (!message.member.permissions.has(PermissionsBitField.Flags.ModerateMembers))
+      return message.reply("❌ You don't have permission to unmute members.");
+
+    const member = message.mentions.members.first();
+    if (!member) return message.reply("Usage: `$unmute @user`");
+
+    try {
+      await member.timeout(null);
+      return message.reply(`🔊 **${member.user.tag}** has been unmuted.`);
+    } catch {
+      return message.reply("❌ I cannot unmute that member.");
+    }
+  }
+
+  if (command === "clear") {
+    if (!message.member.permissions.has(PermissionsBitField.Flags.ManageMessages))
+      return message.reply("❌ You don't have permission to delete messages.");
+
+    const amount = parseInt(args[0]);
+
+    if (!amount || amount < 1 || amount > 100)
+      return message.reply("Usage: `$clear <1-100>`");
+
+    try {
+      await message.channel.bulkDelete(amount, true);
+
+      const msg = await message.channel.send(
+        `🧹 Deleted **${amount}** messages.`
+      );
+
+      setTimeout(() => msg.delete().catch(() => {}), 3000);
+    } catch {
+      return message.reply("❌ I couldn't delete those messages.");
+    }
+  }
+
+  if (command === "role") {
+    if (!message.member.permissions.has(PermissionsBitField.Flags.ManageRoles))
+      return message.reply("❌ You don't have permission to manage roles.");
+
+    const member = message.mentions.members.first();
+    const role = message.mentions.roles.first();
+
+    if (!member || !role)
+      return message.reply("Usage: `$role @user @role`");
+
+    try {
+      await member.roles.add(role);
+      return message.reply(
+        `✅ Added **${role.name}** to ${member}.`
+      );
+    } catch {
+      return message.reply(
+        "❌ I cannot manage that role. Check my role hierarchy."
+      );
+    }
+  }
+
+  // =========================
+  // 🎮 FUN COMMANDS
+  // =========================
+
+  if (command === "ping") {
+    return message.reply(`🏓 Pong! **${client.ws.ping}ms**`);
+  }
+
+  if (command === "coinflip") {
+    const result = Math.random() < 0.5 ? "Heads" : "Tails";
+
+    return message.reply(`🪙 **${result}!**`);
+  }
+
+  if (command === "dice") {
+    const result = Math.floor(Math.random() * 6) + 1;
+
+    return message.reply(`🎲 You rolled **${result}**!`);
+  }
+
+  if (command === "8ball") {
+    const question = args.join(" ");
+
+    if (!question)
+      return message.reply("Usage: `$8ball <question>`");
+
+    const answers = [
+      "Yes.",
+      "No.",
+      "Maybe.",
+      "Definitely!",
+      "Absolutely!",
+      "Ask again later.",
+      "Probably.",
+      "I don't think so."
+    ];
+
+    const answer =
+      answers[Math.floor(Math.random() * answers.length)];
+
+    return message.reply(`🎱 **${answer}**`);
+  }
+
+  if (command === "choose") {
+    if (args.length < 2)
+      return message.reply(
+        "Usage: `$choose <option1> <option2>`"
+      );
+
+    const choice =
+      args[Math.floor(Math.random() * args.length)];
+
+    return message.reply(`🤔 I choose **${choice}**!`);
+  }
+
+  if (command === "avatar") {
+    const member =
+      message.mentions.members.first() || message.member;
+
+    return message.reply(
+      member.user.displayAvatarURL({
+        size: 1024,
+        extension: "png"
+      })
+    );
+  }
+
+  // =========================
+  // 📖 HELP
+  // =========================
+
+  if (command === "help") {
+    return message.reply(`
+**🤖 N0ob — Command List**
+
+**🛡️ Moderation**
+\`$kick @user [reason]\`
+\`$ban @user [reason]\`
+\`$mute @user\`
+\`$unmute @user\`
+\`$clear <amount>\`
+\`$role @user @role\`
+
+**🎮 Fun**
+\`$ping\`
+\`$coinflip\`
+\`$dice\`
+\`$8ball <question>\`
+\`$choose <option1> <option2>\`
+\`$avatar [@user]\`
+
+**ℹ️ Information**
+\`$help\`
+
+Prefix: **$**
+`);
+  }
+});
+
+client.login(process.env.DISCORD_TOKEN);
